@@ -13,4 +13,3 @@ export function SavedTeams({ onLoadTeam }: SavedTeamsProps) {
     </div>
   )
 }
-

@@ -13,4 +13,3 @@ export function TeamAnalysis({ team }: TeamAnalysisProps) {
     </div>
   )
 }
-

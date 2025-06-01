@@ -14,4 +14,3 @@ export function TeamSuggestions({ team, pokemonList }: TeamSuggestionsProps) {
     </div>
   )
 }
-

@@ -16,4 +16,3 @@ export function calculateStats(baseStats: Stat[], level: number): Stat[] {
     };
   });
 }
-

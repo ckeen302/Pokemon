@@ -32,4 +32,3 @@ export default function ThemeSelector({ onThemeChange }: ThemeSelectorProps) {
   const [selectedTheme] = useState<Theme>(themes[0])
   return null // Hide theme selector since we're matching exact reference
 }
-

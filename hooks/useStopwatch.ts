@@ -32,4 +32,3 @@ export function useStopwatch(initialTime: number = 0) {
 
   return { time, isRunning, start, pause, reset };
 }
-

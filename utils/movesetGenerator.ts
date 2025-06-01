@@ -12,4 +12,3 @@ export function generateRandomMoveset(pokemon: Pokemon): Move[] {
     category: move.category || 'physical'
   }));
 }
-

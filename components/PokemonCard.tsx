@@ -40,4 +40,3 @@ export default function PokemonCard({ pokemon, selected, onSelect, megaDynamaxMo
     </div>
   )
 }
-

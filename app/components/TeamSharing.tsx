@@ -13,4 +13,3 @@ export function TeamSharing({ team }: TeamSharingProps) {
     </div>
   )
 }
-

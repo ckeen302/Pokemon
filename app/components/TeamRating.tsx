@@ -13,4 +13,3 @@ export function TeamRating({ team }: TeamRatingProps) {
     </div>
   )
 }
-
