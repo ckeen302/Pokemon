@@ -4,8 +4,12 @@ import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Loader2, Search } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, Search, CreditCard, Filter, Grid3X3, List, ExternalLink, TrendingUp } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { TradingCardIcon } from "@/components/TradingCardIcon"
 
 interface TCGCard {
   id: string
@@ -128,33 +132,6 @@ type SortOrder =
   | "rarity-asc"
   | "rarity-desc"
 
-const getHighestPrice = (card: TCGCard): number => {
-  if (!card.tcgplayer?.prices && !card.cardmarket?.prices) return 0
-
-  const tcgPlayerPrices = card.tcgplayer?.prices
-    ? Object.values(card.tcgplayer.prices).flatMap((priceObj) => [
-        priceObj?.market || 0,
-        priceObj?.directLow || 0,
-        priceObj?.low || 0,
-        priceObj?.mid || 0,
-        priceObj?.high || 0,
-      ])
-    : []
-
-  const cardmarketPrices = card.cardmarket?.prices
-    ? [
-        card.cardmarket.prices.averageSellPrice,
-        card.cardmarket.prices.lowPrice,
-        card.cardmarket.prices.trendPrice,
-        card.cardmarket.prices.reverseHoloSell,
-        card.cardmarket.prices.reverseHoloLow,
-        card.cardmarket.prices.reverseHoloTrend,
-      ]
-    : []
-
-  return Math.max(...tcgPlayerPrices, ...cardmarketPrices)
-}
-
 const getRelevantPrice = (card: TCGCard): { price: number; source: string } => {
   if (card.tcgplayer?.prices) {
     const { normal, holofoil, reverseHolofoil, "1stEditionHolofoil": firstEdition } = card.tcgplayer.prices
@@ -182,6 +159,7 @@ const getRarityOrder = (rarity: string): number => {
 export default function TCGMode() {
   const [cards, setCards] = useState<TCGCard[]>([])
   const [filteredCards, setFilteredCards] = useState<TCGCard[]>([])
+  const [selectedCard, setSelectedCard] = useState<TCGCard | null>(null)
   const [selectedType, setSelectedType] = useState<CardType>("All")
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -300,183 +278,358 @@ export default function TCGMode() {
 
   const CardDisplay = ({ card }: { card: TCGCard }) => {
     const { price, source } = getRelevantPrice(card)
+
+    if (viewMode === "list") {
+      return (
+        <Card className="modern-card hover:shadow-medium transition-all duration-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-28 flex-shrink-0">
+                <img
+                  src={card.images.small || "/placeholder.svg"}
+                  alt={card.name}
+                  className="w-full h-full object-contain rounded-lg border border-gray-200"
+                />
+              </div>
+              <div className="flex-grow min-w-0">
+                <h3 className="heading-sm text-gray-900 mb-2 truncate">{card.name}</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <img src={card.set.images.symbol || "/placeholder.svg"} alt={card.set.name} className="w-5 h-5" />
+                  <span className="text-small text-gray-600 truncate">{card.set.name}</span>
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="outline" className="text-xs">
+                    {card.number}/{card.set.printedTotal}
+                  </Badge>
+                  {card.rarity && (
+                    <Badge variant="secondary" className="text-xs">
+                      {card.rarity}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-green-600" />
+                  <span className="font-semibold text-gray-900">{formatPrice(price)}</span>
+                  <span className="text-xs text-gray-500 truncate">{source}</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )
+    }
+
     return (
-      <Card className="bg-[rgba(24,191,191,0.1)] border-[#18BFBF] text-[#00FFFF] hover:bg-[rgba(24,191,191,0.2)] transition-colors">
-        <CardContent className="p-4 flex flex-col items-center">
-          <div className="relative w-full h-[250px] mb-4">
+      <Card className="modern-card hover:shadow-medium transition-all duration-200 h-full">
+        <CardContent className="p-4 flex flex-col h-full">
+          <div className="relative w-full h-[280px] mb-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
             <img
               src={card.images.small || "/placeholder.svg"}
               alt={card.name}
-              className="absolute inset-0 w-full h-full object-contain"
+              className="max-w-full max-h-full object-contain"
             />
           </div>
-          <h3 className="text-lg font-semibold mb-2 text-center">{card.name}</h3>
-          <div className="flex items-center gap-2 mb-2">
-            <img src={card.set.images.symbol || "/placeholder.svg"} alt={card.set.name} className="w-6 h-6" />
-            <span className="text-sm">{card.set.name}</span>
+          <h3 className="heading-sm text-gray-900 mb-2 text-center line-clamp-2">{card.name}</h3>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <img src={card.set.images.symbol || "/placeholder.svg"} alt={card.set.name} className="w-5 h-5" />
+            <span className="text-small text-gray-600 truncate">{card.set.name}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full bg-[rgba(24,191,191,0.2)] text-sm">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Badge variant="outline" className="text-xs">
               {card.number}/{card.set.printedTotal}
-            </span>
+            </Badge>
             {card.rarity && (
-              <span className="px-3 py-1 rounded-full bg-[rgba(24,191,191,0.2)] text-sm">{card.rarity}</span>
+              <Badge variant="secondary" className="text-xs">
+                {card.rarity}
+              </Badge>
             )}
           </div>
-          <div className="mt-2 text-sm">Price: {formatPrice(price)}</div>
-          <div className="mt-1 text-xs opacity-70">{source}</div>
+          <div className="mt-auto text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <TrendingUp className="w-4 h-4 text-green-600" />
+              <span className="font-semibold text-gray-900">{formatPrice(price)}</span>
+            </div>
+            <span className="text-xs text-gray-500">{source}</span>
+          </div>
         </CardContent>
       </Card>
     )
   }
 
+  const CardDetailView = ({ card, onClose }: { card: TCGCard | null; onClose: () => void }) => {
+    if (!card) return null
+
+    return (
+      <Dialog open={!!card} onOpenChange={() => onClose()}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="heading-lg text-gray-900">{card.name}</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-full pr-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
+                <img
+                  src={card.images.large || "/placeholder.svg"}
+                  alt={card.name}
+                  className="max-w-full max-h-[500px] object-contain rounded-lg"
+                />
+              </div>
+              <div className="space-y-6">
+                <Card className="modern-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-blue-600" />
+                      Card Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <span className="block text-sm font-medium text-gray-700">Type</span>
+                      <span className="text-gray-900">{card.supertype}</span>
+                    </div>
+                    {card.hp && (
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <span className="block text-sm font-medium text-gray-700">HP</span>
+                        <span className="text-gray-900">{card.hp}</span>
+                      </div>
+                    )}
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <span className="block text-sm font-medium text-gray-700">Set</span>
+                      <span className="text-gray-900">{card.set.name}</span>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <span className="block text-sm font-medium text-gray-700">Number</span>
+                      <span className="text-gray-900">
+                        {card.number}/{card.set.printedTotal}
+                      </span>
+                    </div>
+                    {card.rarity && (
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <span className="block text-sm font-medium text-gray-700">Rarity</span>
+                        <span className="text-gray-900">{card.rarity}</span>
+                      </div>
+                    )}
+                    {card.artist && (
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <span className="block text-sm font-medium text-gray-700">Artist</span>
+                        <span className="text-gray-900">{card.artist}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {card.abilities && card.abilities.length > 0 && (
+                  <Card className="modern-card">
+                    <CardHeader>
+                      <CardTitle>Abilities</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {card.abilities.map((ability, index) => (
+                        <div key={index} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                          <h4 className="font-semibold text-blue-900 mb-2">{ability.name}</h4>
+                          <p className="text-sm text-blue-800">{ability.text}</p>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {card.attacks && card.attacks.length > 0 && (
+                  <Card className="modern-card">
+                    <CardHeader>
+                      <CardTitle>Attacks</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {card.attacks.map((attack, index) => (
+                        <div key={index} className="bg-red-50 p-4 rounded-lg border border-red-200">
+                          <h4 className="font-semibold text-red-900 mb-2">{attack.name}</h4>
+                          <p className="text-sm text-red-800 mb-2">{attack.text}</p>
+                          <div className="flex justify-between text-sm text-red-700">
+                            <span>Damage: {attack.damage}</span>
+                            <span>Energy: {attack.convertedEnergyCost}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {card.tcgplayer?.prices && (
+                  <Card className="modern-card">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-green-600" />
+                        TCGplayer Prices
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 gap-3">
+                        {Object.entries(card.tcgplayer.prices).map(
+                          ([priceType, priceData]) =>
+                            priceData && (
+                              <div key={priceType} className="bg-green-50 p-3 rounded-lg border border-green-200">
+                                <div className="flex justify-between items-center">
+                                  <span className="font-medium text-green-900 capitalize">
+                                    {priceType.replace(/([A-Z])/g, " $1")}
+                                  </span>
+                                  <span className="font-bold text-green-900">{formatPrice(priceData.market)}</span>
+                                </div>
+                                <div className="text-sm text-green-700 mt-1">
+                                  Low: {formatPrice(priceData.low)} | Mid: {formatPrice(priceData.mid)} | High:{" "}
+                                  {formatPrice(priceData.high)}
+                                </div>
+                              </div>
+                            ),
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Last updated: {new Date(card.tcgplayer.updatedAt).toLocaleDateString()}
+                      </p>
+                      {card.tcgplayer.url && (
+                        <Button className="w-full" onClick={() => window.open(card.tcgplayer.url, "_blank")}>
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          View on TCGPlayer
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
-    <div className="p-4 bg-[#0F2F2F] text-[#00FFFF] h-full overflow-y-auto">
-      <h2 className="text-2xl uppercase tracking-wider mb-6">Pokémon TCG Explorer</h2>
-      <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="relative">
-          <Input
-            type="text"
-            placeholder="Search cards..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[rgba(24,191,191,0.1)] border-[#18BFBF] text-[#00FFFF] placeholder:text-[#00FFFF]/50 pr-10"
-          />
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#00FFFF] opacity-50" />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div>
+          <h2 className="heading-lg text-gray-900 flex items-center gap-2">
+            <TradingCardIcon className="w-6 h-6 text-blue-600" />
+            Pokémon Trading Cards
+          </h2>
+          <p className="text-gray-600 mt-1">Explore cards with real-time pricing</p>
         </div>
-        <Select value={selectedType} onValueChange={(value: CardType) => setSelectedType(value)}>
-          <SelectTrigger className="w-full bg-[rgba(24,191,191,0.1)] border-[#18BFBF] text-[#00FFFF]">
-            <SelectValue placeholder="Filter by type" />
-          </SelectTrigger>
-          <SelectContent className="bg-[#0F2F2F] border-[#18BFBF]">
-            {CARD_TYPES.map((type) => (
-              <SelectItem
-                key={type}
-                value={type}
-                className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-              >
-                {type}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={selectedSet} onValueChange={(value: string) => setSelectedSet(value)}>
-          <SelectTrigger className="w-full bg-[rgba(24,191,191,0.1)] border-[#18BFBF] text-[#00FFFF]">
-            <SelectValue placeholder="Select set" />
-          </SelectTrigger>
-          <SelectContent className="bg-[#0F2F2F] border-[#18BFBF] max-h-[300px] overflow-y-auto">
-            {sets.map((set) => (
-              <SelectItem
-                key={set.id}
-                value={set.id}
-                className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-              >
-                {set.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={sortOrder} onValueChange={(value: SortOrder) => setSortOrder(value)}>
-          <SelectTrigger className="w-full bg-[rgba(24,191,191,0.1)] border-[#18BFBF] text-[#00FFFF]">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent className="bg-[#0F2F2F] border-[#18BFBF]">
-            <SelectItem
-              value="none"
-              className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-            >
-              Default Order
-            </SelectItem>
-            <SelectItem
-              value="price-asc"
-              className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-            >
-              Price: Low to High
-            </SelectItem>
-            <SelectItem
-              value="price-desc"
-              className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-            >
-              Price: High to Low
-            </SelectItem>
-            <SelectItem
-              value="number-asc"
-              className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-            >
-              Number: Low to High
-            </SelectItem>
-            <SelectItem
-              value="number-desc"
-              className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-            >
-              Number: High to Low
-            </SelectItem>
-            <SelectItem
-              value="name-asc"
-              className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-            >
-              Name: A to Z
-            </SelectItem>
-            <SelectItem
-              value="name-desc"
-              className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-            >
-              Name: Z to A
-            </SelectItem>
-            <SelectItem
-              value="type-asc"
-              className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-            >
-              Type: A to Z
-            </SelectItem>
-            <SelectItem
-              value="type-desc"
-              className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-            >
-              Type: Z to A
-            </SelectItem>
-            <SelectItem
-              value="rarity-asc"
-              className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-            >
-              Rarity: Common to Rare
-            </SelectItem>
-            <SelectItem
-              value="rarity-desc"
-              className="text-[#00FFFF] hover:bg-[rgba(24,191,191,0.1)] focus:bg-[rgba(24,191,191,0.1)]"
-            >
-              Rarity: Rare to Common
-            </SelectItem>
-          </SelectContent>
-        </Select>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
+            className="flex items-center gap-2"
+          >
+            {viewMode === "grid" ? <List className="w-4 h-4" /> : <Grid3X3 className="w-4 h-4" />}
+            {viewMode === "grid" ? "List" : "Grid"}
+          </Button>
+        </div>
       </div>
-      <div className="mb-4 flex justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
-          className="bg-[rgba(24,191,191,0.1)] border-[#18BFBF] text-[#00FFFF] hover:bg-[rgba(24,191,191,0.2)]"
-        >
-          {viewMode === "grid" ? "List View" : "Grid View"}
-        </Button>
+
+      {/* Filters */}
+      <Card className="modern-card">
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                type="text"
+                placeholder="Search cards..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 search-input focus-ring"
+              />
+            </div>
+            <Select value={selectedType} onValueChange={(value: CardType) => setSelectedType(value)}>
+              <SelectTrigger>
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                {CARD_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedSet} onValueChange={(value: string) => setSelectedSet(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select set" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px] overflow-y-auto">
+                {sets.map((set) => (
+                  <SelectItem key={set.id} value={set.id}>
+                    {set.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortOrder} onValueChange={(value: SortOrder) => setSortOrder(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Default Order</SelectItem>
+                <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                <SelectItem value="number-asc">Number: Low to High</SelectItem>
+                <SelectItem value="number-desc">Number: High to Low</SelectItem>
+                <SelectItem value="name-asc">Name: A to Z</SelectItem>
+                <SelectItem value="name-desc">Name: Z to A</SelectItem>
+                <SelectItem value="rarity-asc">Rarity: Common to Rare</SelectItem>
+                <SelectItem value="rarity-desc">Rarity: Rare to Common</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cards Grid/List */}
+      <div className="fade-in">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <p className="text-gray-600">Loading cards...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <div className="text-red-400 mb-4">
+              <CreditCard className="w-16 h-16 mx-auto" />
+            </div>
+            <h3 className="heading-md text-gray-700 mb-2">Error loading cards</h3>
+            <p className="text-red-500 mb-4">{error}</p>
+            <Button onClick={() => fetchCards(selectedSet)} variant="outline">
+              Try Again
+            </Button>
+          </div>
+        ) : filteredCards.length > 0 ? (
+          <div
+            className={`grid gap-6 ${
+              viewMode === "grid"
+                ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+                : "grid-cols-1"
+            }`}
+          >
+            {filteredCards.map((card) => (
+              <CardDisplay key={card.id} card={card} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className="text-gray-400 mb-4">
+              <Search className="w-16 h-16 mx-auto" />
+            </div>
+            <h3 className="heading-md text-gray-700 mb-2">No cards found</h3>
+            <p className="text-gray-500">Try adjusting your search criteria</p>
+          </div>
+        )}
       </div>
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-[#00FFFF]" />
-        </div>
-      ) : error ? (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-red-500">{error}</p>
-        </div>
-      ) : (
-        <div
-          className={`grid gap-6 ${viewMode === "grid" ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" : "grid-cols-1"}`}
-        >
-          {filteredCards.map((card) => (
-            <CardDisplay key={card.id} card={card} />
-          ))}
-        </div>
-      )}
+
+      {/* {selectedCard && <CardDetailView card={selectedCard} onClose={() => setSelectedCard(null)} />} */}
     </div>
   )
 }
